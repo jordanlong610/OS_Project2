@@ -25,12 +25,11 @@ int programExecutionTime;
 
 int globalTime = 0;
 
-struct thread
-{
+struct thread{
     int executionTime;
     int period;
-    int elapsedTime = 0;
-    int isComplete = 0;
+    int elapsedTime;
+    int isComplete;
 };
 
 
@@ -51,7 +50,7 @@ void *threadRunner(void *number)
   while(threadInfo[threadNumber].elapsedTime < threadInfo[threadNumber].period)
   {
 	  sem_wait(&timer);
-	  printf("Thread %d now being executed.\n", threadNumber);
+	  printf("\nThread %d now being executed.", threadNumber);
 	  	int i = 0;
 	  	while(i < threadInfo[threadNumber].executionTime)
 	  	{
@@ -60,7 +59,7 @@ void *threadRunner(void *number)
 	  	  i++;
 	  	}
   }
-  printf("CPU is idling now");
+  printf("\nCPU is idling now.");
   threadInfo[threadNumber].isComplete = 1;	//Mark thread as complete
   threadsFinished++;
   pthread_exit(0);
@@ -84,9 +83,8 @@ void *timerFunction()
 	{
 		for(int i=0; i<threadsCreated;i++)
 		{
-			if(globalTime == executionTime[i] &&threadInfo[i].isComplete != 1)
+			if(threadInfo[i].isComplete != 1)
 			{
-				interval += timeQ;
 				sem_post(&timer);
 			}
 			else
@@ -145,6 +143,8 @@ int main(int argc, char **argv)
 	{
 		printf("\nExecution time for Thread %d: ", i);
 		scanf("%d", &threadInfo[i].executionTime);
+		threadInfo[i].isComplete = 0;
+		threadInfo[i].elapsedTime = 0;
 	}
 
 	/*
