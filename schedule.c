@@ -36,9 +36,12 @@ struct thread{
 /*
  * Function for quicksort
  */
-int cmpfunc (const void * a, const void * b)
+int compare (const void * a, const void * b)
 {
-   return ( *(int*)a - *(int*)b );
+	 struct thread *threadA = (struct thread *)a;
+	 struct thread *threadB = (struct thread *)b;
+
+	 return (threadA->period - threadB->period);
 }
 
 /*
@@ -50,16 +53,16 @@ void *threadRunner(void *number)
   while(threadInfo[threadNumber].elapsedTime < threadInfo[threadNumber].period)
   {
 	  sem_wait(&timer);
-	  printf("\nThread %d now being executed.", threadNumber);
-	  	int i = 0;
-	  	while(i < threadInfo[threadNumber].executionTime)
-	  	{
-	  	  sleep(1);
-	  	  threadInfo[threadNumber].elapsedTime++;
-	  	  i++;
-	  	}
+	  printf("Thread %d now being executed.\n", threadNumber);
+	  int i = 0;
+	  while(i < threadInfo[threadNumber].executionTime)
+	  {
+	  	 sleep(1);
+	  	 threadInfo[threadNumber].elapsedTime++;
+	  	 i++;
+	  }
   }
-  printf("\nCPU is idling now.");
+  printf("CPU is idling now.\n");
   threadInfo[threadNumber].isComplete = 1;	//Mark thread as complete
   threadsFinished++;
   pthread_exit(0);
@@ -72,19 +75,16 @@ void *threadRunner(void *number)
 void *timerFunction()
 {
 	globalTime = 0;
-
-	//Rearrange threads in EDF order so the existing RR can cycle through them
-
-
-
-
+	int interval = 0;
 
 	while(threadsFinished != threadsCreated || !(globalTime>programExecutionTime))
 	{
 		for(int i=0; i<threadsCreated;i++)
 		{
-			if(threadInfo[i].isComplete != 1)
+
+			if(interval == threadInfo[i].executionTime)
 			{
+				interval = 0;
 				sem_post(&timer);
 			}
 			else
@@ -92,6 +92,7 @@ void *timerFunction()
 				printf("%d\n", globalTime);
 				sleep(1);
 				globalTime++;
+				interval++;
 			}
 
 
@@ -165,7 +166,7 @@ int main(int argc, char **argv)
 	/*
 	 * Sort periods least to greatest for EDF algorithm
 	 */
-//	qsort(period, threadsCreated, sizeof(int), cmpfunc);
+	qsort (TI, threadsCreated, sizeof(struct thread), compare);
 
 
 	/*
