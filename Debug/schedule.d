@@ -1,1 +1,0 @@
-schedule.o: ../schedule.c

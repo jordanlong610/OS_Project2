@@ -18,35 +18,50 @@
 
 sem_t timer;
 sem_t ready;
-int timeQ;
 int threadsCreated;
 int threadsFinished = 0;
-int* executionTime;
-int* period;
+struct thread *threadInfo;
 int programExecutionTime;
 
 int globalTime = 0;
 
+struct thread
+{
+    int executionTime;
+    int period;
+    int elapsedTime = 0;
+    int isComplete = 0;
+};
+
+
 /*
- * Runner for each spawned thread. Will wait for its turn, then run for allotted burst time until finished.
+ * Function for quicksort
+ */
+int cmpfunc (const void * a, const void * b)
+{
+   return ( *(int*)a - *(int*)b );
+}
+
+/*
+ * Runner for each spawned thread. Will wait for its turn, then run for allotted execution time until finished.
  */
 void *threadRunner(void *number)
 {
-  int threadTime = 0;
   int threadNumber = *((int *) number);
-  while(threadTime < executionTime[threadNumber])
+  while(threadInfo[threadNumber].elapsedTime < threadInfo[threadNumber].period)
   {
 	  sem_wait(&timer);
 	  printf("Thread %d now being executed.\n", threadNumber);
 	  	int i = 0;
-	  	while(i < timeQ && threadTime < executionTime[threadNumber]+1)
+	  	while(i < threadInfo[threadNumber].executionTime)
 	  	{
 	  	  sleep(1);
-	  	  threadTime++;
+	  	  threadInfo[threadNumber].elapsedTime++;
 	  	  i++;
 	  	}
   }
-  printf("Thread %d finished in %d seconds! It will now be terminated.\n", threadNumber, globalTime);
+  printf("CPU is idling now");
+  threadInfo[threadNumber].isComplete = 1;	//Mark thread as complete
   threadsFinished++;
   pthread_exit(0);
 }
@@ -58,23 +73,35 @@ void *threadRunner(void *number)
 void *timerFunction()
 {
 	globalTime = 0;
-	int interval = timeQ;
-	while(threadsFinished != threadsCreated)
-	{
 
-		if(globalTime == interval)
+	//Rearrange threads in EDF order so the existing RR can cycle through them
+
+
+
+
+
+	while(threadsFinished != threadsCreated || !(globalTime>programExecutionTime))
+	{
+		for(int i=0; i<threadsCreated;i++)
 		{
-			interval += timeQ;
-			sem_post(&timer);
+			if(globalTime == executionTime[i] &&threadInfo[i].isComplete != 1)
+			{
+				interval += timeQ;
+				sem_post(&timer);
+			}
+			else
+			{
+				printf("%d\n", globalTime);
+				sleep(1);
+				globalTime++;
+			}
+
+
 		}
-		else
-		{
-			printf("%d\n", globalTime);
-			sleep(1);
-			globalTime++;
-		}
+
+
     }
-	printf("All threads finished. Scheduler thread will now exit.");
+	printf("Killed");
 	pthread_exit(0);
 }
 
@@ -108,12 +135,8 @@ int main(int argc, char **argv)
 	}
 
 	threadsCreated = atoi(argv[1]);
-//	timeQ = atoi(argv[2]);
-	int E[threadsCreated]; //Point local burst times at global array
-	executionTime = E;
-
-	int P[threadsCreated];
-	period = P;
+	struct thread TI[threadsCreated];
+	threadInfo = TI;
 
 	/*
 	 * Prints out requests for execution times of each thread, and stores value in  executionTime array.
@@ -121,7 +144,7 @@ int main(int argc, char **argv)
 	for(int i=0; i<threadsCreated; i++)
 	{
 		printf("\nExecution time for Thread %d: ", i);
-		scanf("%d", &executionTime[i]);
+		scanf("%d", &threadInfo[i].executionTime);
 	}
 
 	/*
@@ -130,14 +153,19 @@ int main(int argc, char **argv)
 	for(int i=0; i<threadsCreated; i++)
 	{
 		printf("\nPeriod for Thread %d: ", i);
-		scanf("%d", &period[i]);
+		scanf("%d", &threadInfo[i].period);
 	}
 
 	/*
 	 * Request how long the program should execute.
 	 */
 	printf("\nHow long do you want to execute this program (sec): ");
-	scanf("%d", programExecutionTime);
+	scanf("%d", &programExecutionTime);
+
+	/*
+	 * Sort periods least to greatest for EDF algorithm
+	 */
+//	qsort(period, threadsCreated, sizeof(int), cmpfunc);
 
 
 	/*
@@ -155,7 +183,7 @@ int main(int argc, char **argv)
 	pthread_attr_t attr[threadsCreated];
 	for(int i=0; i<threadsCreated; i++)
 	{
-		int *arg = malloc(sizeof(*arg)); //Convert int to a pointer
+		int *arg = malloc(sizeof(*arg)); //Convert int to a pointer  possibly pass struct in
 		*arg = i;
 		pthread_attr_init(&attr[i]);
 		pthread_attr_setscope(&attr[i], PTHREAD_SCOPE_SYSTEM);
