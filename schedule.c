@@ -77,26 +77,32 @@ void *timerFunction()
 	globalTime = 0;
 	int interval = 0;
 
-	while(threadsFinished != threadsCreated || !(globalTime>programExecutionTime))
+	while((threadsFinished < threadsCreated) && (globalTime < programExecutionTime))
 	{
-		for(int i=0; i<threadsCreated;i++)
-		{
+		int i =0;
 
-			if(interval == threadInfo[i].executionTime)
+		if(interval == threadInfo[i].executionTime)
+		{
+			interval = 0;
+			if(i==(threadsCreated-1))
 			{
-				interval = 0;
-				sem_post(&timer);
+				i=0;
 			}
 			else
 			{
-				printf("%d\n", globalTime);
-				sleep(1);
-				globalTime++;
-				interval++;
+				i++;
 			}
-
+			sem_post(&timer);
 
 		}
+		else
+		{
+			printf("%d\n", globalTime);
+			sleep(1);
+			globalTime++;
+			interval++;
+		}
+
 
 
     }
