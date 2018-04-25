@@ -26,15 +26,15 @@ int programExecutionTime;
 int globalTime = 0;
 
 struct thread{
+	int threadID;
     int executionTime;
     int period;
     int elapsedTime;
-    int isComplete;
 };
 
 
 /*
- * Function for quicksort
+ * Function for quick sort to compare 2 values
  */
 int compare (const void * a, const void * b)
 {
@@ -53,7 +53,7 @@ void *threadRunner(void *number)
   while(threadInfo[threadNumber].elapsedTime < threadInfo[threadNumber].period)
   {
 	  sem_wait(&timer);
-	  printf("Thread %d now being executed.\n", threadNumber);
+	  printf("Thread %d now being executed.\n", threadInfo[threadNumber].threadID);
 	  int i = 0;
 	  while(i < threadInfo[threadNumber].executionTime)
 	  {
@@ -63,7 +63,6 @@ void *threadRunner(void *number)
 	  }
   }
   printf("CPU is idling now.\n");
-  threadInfo[threadNumber].isComplete = 1;	//Mark thread as complete
   threadsFinished++;
   pthread_exit(0);
 }
@@ -76,11 +75,10 @@ void *timerFunction()
 {
 	globalTime = 0;
 	int interval = 0;
+	int i = 0;
 
 	while((threadsFinished < threadsCreated) && (globalTime < programExecutionTime))
 	{
-		int i =0;
-
 		if(interval == threadInfo[i].executionTime)
 		{
 			interval = 0;
@@ -93,7 +91,6 @@ void *timerFunction()
 				i++;
 			}
 			sem_post(&timer);
-
 		}
 		else
 		{
@@ -102,9 +99,6 @@ void *timerFunction()
 			globalTime++;
 			interval++;
 		}
-
-
-
     }
 	printf("Killed");
 	pthread_exit(0);
@@ -150,7 +144,7 @@ int main(int argc, char **argv)
 	{
 		printf("\nExecution time for Thread %d: ", i);
 		scanf("%d", &threadInfo[i].executionTime);
-		threadInfo[i].isComplete = 0;
+		threadInfo[i].threadID = i;
 		threadInfo[i].elapsedTime = 0;
 	}
 
@@ -165,9 +159,22 @@ int main(int argc, char **argv)
 
 	/*
 	 * Request how long the program should execute.
+	 * Checks to see if it is possible to execute this program and complete the threads in the given time.
 	 */
 	printf("\nHow long do you want to execute this program (sec): ");
 	scanf("%d", &programExecutionTime);
+
+	double sum =0.0;
+	for(int i=0; i<threadsCreated; i++)
+	{
+		sum += (double)threadInfo[i].executionTime / (double)threadInfo[i].period;
+	}
+
+	if(sum>= 1.0)
+	{
+		printf("\nThese threads can't be scheduled. Program will exit.");
+		return 0;
+	}
 
 	/*
 	 * Sort periods least to greatest for EDF algorithm
@@ -199,4 +206,3 @@ int main(int argc, char **argv)
 	}
 	pthread_join(timer_thread, NULL);
 }
-
